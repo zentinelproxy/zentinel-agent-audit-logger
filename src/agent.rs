@@ -11,12 +11,11 @@ use async_trait::async_trait;
 use rand::Rng;
 use regex::Regex;
 use sentinel_agent_sdk::{Agent, Decision, Request, Response};
-use sentinel_agent_sdk::v2::{
-    AgentV2, AgentCapabilities, AgentCapabilitiesExt, HealthStatus,
-    DrainReason, ShutdownReason,
+use sentinel_agent_protocol::{AgentResponse, EventType, RequestHeadersEvent, ResponseHeadersEvent};
+use sentinel_agent_protocol::v2::{
+    AgentCapabilities, AgentFeatures, AgentHandlerV2, CounterMetric, DrainReason,
+    GaugeMetric, HealthStatus, MetricsReport, ShutdownReason,
 };
-// Import MetricsReport and metric types from protocol crate
-use sentinel_agent_protocol::v2::{MetricsReport, CounterMetric};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, AtomicBool, Ordering};
@@ -582,16 +581,21 @@ impl Agent for AuditLoggerAgent {
 /// v2 Protocol implementation for AuditLoggerAgent.
 ///
 /// Provides capability reporting, health status, and metrics export.
-impl AgentV2 for AuditLoggerAgent {
+#[async_trait]
+impl AgentHandlerV2 for AuditLoggerAgent {
     fn capabilities(&self) -> AgentCapabilities {
         AgentCapabilities::new("audit-logger", "Sentinel Audit Logger", env!("CARGO_PKG_VERSION"))
-            .with_streaming_body(false)  // Audit logger doesn't need body streaming
-            .with_config_push(true)      // Supports runtime config updates
-            .with_health_reporting(true) // Reports health status
-            .with_metrics_export(true)   // Exports metrics
-            .with_concurrent_requests(1000) // Can handle many concurrent requests
-            .with_flow_control(false)    // Doesn't need flow control (always allows)
-            .with_health_interval_ms(10_000) // Report health every 10 seconds
+            .with_event(EventType::RequestHeaders)
+            .with_event(EventType::ResponseHeaders)
+            .with_features(AgentFeatures {
+                streaming_body: false,       // Audit logger doesn't need body streaming
+                config_push: true,           // Supports runtime config updates
+                health_reporting: true,      // Reports health status
+                metrics_export: true,        // Exports metrics
+                concurrent_requests: 1000,   // Can handle many concurrent requests
+                flow_control: false,         // Doesn't need flow control (always allows)
+                health_interval_ms: 10_000,  // Report health every 10 seconds
+            })
     }
 
     fn health_status(&self) -> HealthStatus {
@@ -654,7 +658,7 @@ impl AgentV2 for AuditLoggerAgent {
         Some(report)
     }
 
-    fn on_shutdown(&self, reason: ShutdownReason, grace_period_ms: u64) {
+    async fn on_shutdown(&self, reason: ShutdownReason, grace_period_ms: u64) {
         info!(
             ?reason,
             grace_period_ms,
@@ -668,7 +672,7 @@ impl AgentV2 for AuditLoggerAgent {
         // For now, just log the shutdown
     }
 
-    fn on_drain(&self, duration_ms: u64, reason: DrainReason) {
+    async fn on_drain(&self, duration_ms: u64, reason: DrainReason) {
         warn!(
             ?reason,
             duration_ms,
