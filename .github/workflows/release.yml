@@ -13,7 +13,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  BINARY_NAME: sentinel-audit-logger-agent
+  BINARY_NAME: sentinel-agent-audit-logger
 
 jobs:
   build:
