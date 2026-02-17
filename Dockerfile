@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.4
 
-# Sentinel Audit Logger Agent Container Image
+# Zentinel Audit Logger Agent Container Image
 #
 # Targets:
 #   - prebuilt: For CI with pre-built binaries
@@ -10,16 +10,16 @@
 ################################################################################
 FROM gcr.io/distroless/cc-debian12:nonroot AS prebuilt
 
-COPY sentinel-agent-audit-logger /sentinel-agent-audit-logger
+COPY zentinel-agent-audit-logger /zentinel-agent-audit-logger
 
-LABEL org.opencontainers.image.title="Sentinel Audit Logger Agent" \
-      org.opencontainers.image.description="Sentinel Audit Logger Agent for Sentinel reverse proxy" \
+LABEL org.opencontainers.image.title="Zentinel Audit Logger Agent" \
+      org.opencontainers.image.description="Zentinel Audit Logger Agent for Zentinel reverse proxy" \
       org.opencontainers.image.vendor="Raskell" \
-      org.opencontainers.image.source="https://github.com/raskell-io/sentinel-agent-audit-logger"
+      org.opencontainers.image.source="https://github.com/zentinelproxy/zentinel-agent-audit-logger"
 
-ENV RUST_LOG=info,sentinel_agent_audit_logger=debug \
-    SOCKET_PATH=/var/run/sentinel/audit-logger.sock
+ENV RUST_LOG=info,zentinel_agent_audit_logger=debug \
+    SOCKET_PATH=/var/run/zentinel/audit-logger.sock
 
 USER nonroot:nonroot
 
-ENTRYPOINT ["/sentinel-agent-audit-logger"]
+ENTRYPOINT ["/zentinel-agent-audit-logger"]

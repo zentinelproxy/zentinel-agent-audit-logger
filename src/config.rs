@@ -68,7 +68,7 @@ impl Default for FormatConfig {
             pretty: false,
             include_timestamp: true,
             timestamp_format: "%Y-%m-%dT%H:%M:%S%.3fZ".to_string(),
-            device_vendor: "Sentinel".to_string(),
+            device_vendor: "Zentinel".to_string(),
             device_product: "AuditLogger".to_string(),
             device_version: env!("CARGO_PKG_VERSION").to_string(),
         }

@@ -1,11 +1,11 @@
-//! Sentinel Audit Logger Agent CLI
+//! Zentinel Audit Logger Agent CLI
 //!
-//! A comprehensive audit logging agent for the Sentinel API Gateway.
+//! A comprehensive audit logging agent for the Zentinel API Gateway.
 //! Supports Protocol v2 with gRPC and UDS transports.
 
 use clap::Parser;
-use sentinel_agent_audit_logger::{AuditLoggerAgent, AuditLoggerConfig};
-use sentinel_agent_sdk::v2::AgentRunnerV2;
+use zentinel_agent_audit_logger::{AuditLoggerAgent, AuditLoggerConfig};
+use zentinel_agent_sdk::v2::AgentRunnerV2;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use tracing::{error, info};
@@ -13,8 +13,8 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Parser, Debug)]
 #[command(
-    name = "sentinel-audit-logger",
-    about = "Audit logging agent for Sentinel API Gateway (v2 protocol)",
+    name = "zentinel-audit-logger",
+    about = "Audit logging agent for Zentinel API Gateway (v2 protocol)",
     version
 )]
 struct Args {
@@ -23,7 +23,7 @@ struct Args {
     config: PathBuf,
 
     /// Unix socket path for agent communication
-    #[arg(short, long, default_value = "/tmp/sentinel-audit-logger.sock")]
+    #[arg(short, long, default_value = "/tmp/zentinel-audit-logger.sock")]
     socket: PathBuf,
 
     /// gRPC server address (e.g., "0.0.0.0:50051")

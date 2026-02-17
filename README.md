@@ -1,6 +1,6 @@
-# Sentinel Audit Logger Agent
+# Zentinel Audit Logger Agent
 
-A comprehensive audit logging agent for the Sentinel API Gateway. Provides structured, compliance-focused logging with PII redaction, multiple output formats (JSON, CEF, LEEF), and various output destinations.
+A comprehensive audit logging agent for the Zentinel API Gateway. Provides structured, compliance-focused logging with PII redaction, multiple output formats (JSON, CEF, LEEF), and various output destinations.
 
 ## Features
 
@@ -20,14 +20,14 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-sentinel-agent-audit-logger = { git = "https://github.com/raskell-io/sentinel-agent-audit-logger" }
+zentinel-agent-audit-logger = { git = "https://github.com/zentinelproxy/zentinel-agent-audit-logger" }
 ```
 
 ## Quick Start
 
 ```rust
-use sentinel_agent_audit_logger::{AuditLoggerAgent, AuditLoggerConfig};
-use sentinel_agent_sdk::AgentRunner;
+use zentinel_agent_audit_logger::{AuditLoggerAgent, AuditLoggerConfig};
+use zentinel_agent_sdk::AgentRunner;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -79,7 +79,7 @@ fields:
 outputs:
   - type: stdout
   - type: file
-    path: /var/log/sentinel/audit.log
+    path: /var/log/zentinel/audit.log
     max_size: 104857600  # 100MB
     max_files: 10
 
@@ -161,13 +161,13 @@ compliance_template: hipaa  # or soc2, pci, gdpr
 ### CEF (Common Event Format)
 
 ```
-CEF:0|Sentinel|AuditLogger|1.0|POST-201|POST /api/users|1|rt=2024-01-15T10:30:45.123Z src=192.168.1.1 request=/api/users outcome=201
+CEF:0|Zentinel|AuditLogger|1.0|POST-201|POST /api/users|1|rt=2024-01-15T10:30:45.123Z src=192.168.1.1 request=/api/users outcome=201
 ```
 
 ### LEEF (Log Event Extended Format)
 
 ```
-LEEF:2.0|Sentinel|AuditLogger|1.0|POST:201|devTime=2024-01-15T10:30:45.123Z	src=192.168.1.1	url=/api/users	responseCode=201
+LEEF:2.0|Zentinel|AuditLogger|1.0|POST:201|devTime=2024-01-15T10:30:45.123Z	src=192.168.1.1	url=/api/users	responseCode=201
 ```
 
 ## Custom Redaction Patterns
@@ -189,33 +189,33 @@ redaction:
 
 ```bash
 # With default configuration
-sentinel-agent-audit-logger
+zentinel-agent-audit-logger
 
 # With custom configuration
-sentinel-agent-audit-logger --config /etc/sentinel/audit-logger.yaml
+zentinel-agent-audit-logger --config /etc/zentinel/audit-logger.yaml
 
 # Print default configuration
-sentinel-agent-audit-logger --print-config
+zentinel-agent-audit-logger --print-config
 
 # Validate configuration
-sentinel-agent-audit-logger --validate --config audit-logger.yaml
+zentinel-agent-audit-logger --validate --config audit-logger.yaml
 ```
 
 ## CLI Options
 
 - `-c, --config <PATH>`: Configuration file path (default: `audit-logger.yaml`)
-- `-s, --socket <PATH>`: Unix socket path (default: `/tmp/sentinel-audit-logger.sock`)
+- `-s, --socket <PATH>`: Unix socket path (default: `/tmp/zentinel-audit-logger.sock`)
 - `-L, --log-level <LEVEL>`: Log level (trace, debug, info, warn, error)
 - `--print-config`: Print default configuration and exit
 - `--validate`: Validate configuration and exit
 
-## Sentinel Integration
+## Zentinel Integration
 
-Add to your Sentinel configuration:
+Add to your Zentinel configuration:
 
 ```kdl
 agents {
-    audit-logger socket="/tmp/sentinel-audit-logger.sock" {
+    audit-logger socket="/tmp/zentinel-audit-logger.sock" {
         // Agent-specific configuration can be added here
     }
 }

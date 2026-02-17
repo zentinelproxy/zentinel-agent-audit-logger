@@ -1,20 +1,20 @@
 [package]
-name = "sentinel-agent-audit-logger"
+name = "zentinel-agent-audit-logger"
 version = "0.2.0"
 edition = "2021"
 authors = ["Raskell <hello@raskell.io>"]
-description = "Structured audit logging agent for Sentinel proxy - compliance-focused logging with PII redaction"
+description = "Structured audit logging agent for Zentinel proxy - compliance-focused logging with PII redaction"
 license = "Apache-2.0"
-repository = "https://github.com/raskell-io/sentinel-agent-audit-logger"
-keywords = ["sentinel", "proxy", "agent", "audit", "logging"]
+repository = "https://github.com/zentinelproxy/zentinel-agent-audit-logger"
+keywords = ["zentinel", "proxy", "agent", "audit", "logging"]
 categories = ["network-programming", "web-programming"]
 readme = "README.md"
 
 [dependencies]
-# Sentinel SDK with v2 protocol support (local path until published)
-sentinel-agent-sdk = { path = "../sentinel-agent-rust-sdk", features = ["v2"] }
+# Zentinel SDK with v2 protocol support (local path until published)
+zentinel-agent-sdk = { path = "../zentinel-agent-rust-sdk", features = ["v2"] }
 # Direct protocol dependency for v2 metric types
-sentinel-agent-protocol = "0.3"
+zentinel-agent-protocol = "0.3"
 
 # Async runtime
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal", "sync", "time", "fs", "net", "io-util"] }
@@ -69,9 +69,9 @@ tokio-test = "0.4"
 tempfile = "3"
 
 [[bin]]
-name = "sentinel-agent-audit-logger"
+name = "zentinel-agent-audit-logger"
 path = "src/main.rs"
 
 [lib]
-name = "sentinel_agent_audit_logger"
+name = "zentinel_agent_audit_logger"
 path = "src/lib.rs"

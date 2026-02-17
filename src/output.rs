@@ -328,7 +328,7 @@ impl SyslogOutput {
         let priority = self.facility.code() * 8 + 6;
 
         // Simplified syslog format
-        format!("<{}>1 - - sentinel-audit - - - {}", priority, message)
+        format!("<{}>1 - - zentinel-audit - - - {}", priority, message)
     }
 }
 
@@ -591,8 +591,8 @@ mod tests {
     #[test]
     fn test_syslog_format() {
         // Can't easily test actual syslog connection, but test formatting
-        let formatted = format!("<{}>1 - - sentinel-audit - - - test message", 14 * 8 + 6);
+        let formatted = format!("<{}>1 - - zentinel-audit - - - test message", 14 * 8 + 6);
         assert!(formatted.starts_with("<"));
-        assert!(formatted.contains("sentinel-audit"));
+        assert!(formatted.contains("zentinel-audit"));
     }
 }

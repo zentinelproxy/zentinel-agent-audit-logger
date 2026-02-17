@@ -10,9 +10,9 @@ use crate::redaction::{truncate_body, Redactor};
 use async_trait::async_trait;
 use rand::Rng;
 use regex::Regex;
-use sentinel_agent_sdk::{Agent, Decision, Request, Response};
-use sentinel_agent_protocol::{AgentResponse, EventType, RequestHeadersEvent, ResponseHeadersEvent};
-use sentinel_agent_protocol::v2::{
+use zentinel_agent_sdk::{Agent, Decision, Request, Response};
+use zentinel_agent_protocol::{AgentResponse, EventType, RequestHeadersEvent, ResponseHeadersEvent};
+use zentinel_agent_protocol::v2::{
     AgentCapabilities, AgentFeatures, AgentHandlerV2, CounterMetric, DrainReason,
     GaugeMetric, HealthStatus, MetricsReport, ShutdownReason,
 };
@@ -26,7 +26,7 @@ use tracing::{debug, error, info, warn};
 /// Audit Logger Agent
 ///
 /// Captures detailed audit logs for all API traffic passing through
-/// the Sentinel proxy. Supports multiple output formats and destinations.
+/// the Zentinel proxy. Supports multiple output formats and destinations.
 pub struct AuditLoggerAgent {
     config: AuditLoggerConfig,
     formatter: Box<dyn Formatter>,
@@ -422,20 +422,20 @@ impl AuditLoggerAgent {
 
         // Routing info
         if fields.route_id {
-            if let Some(route) = headers.get("x-sentinel-route-id") {
+            if let Some(route) = headers.get("x-zentinel-route-id") {
                 builder = builder.route_id(route.clone());
             }
         }
 
         if fields.upstream {
-            if let Some(upstream) = headers.get("x-sentinel-upstream") {
+            if let Some(upstream) = headers.get("x-zentinel-upstream") {
                 builder = builder.upstream(upstream.clone());
             }
         }
 
         if fields.upstream_duration_ms {
             if let Some(duration) = headers
-                .get("x-sentinel-upstream-duration-ms")
+                .get("x-zentinel-upstream-duration-ms")
                 .and_then(|s| s.parse().ok())
             {
                 builder = builder.upstream_duration_ms(duration);
@@ -444,7 +444,7 @@ impl AuditLoggerAgent {
 
         // Agent decisions
         if fields.agent_decisions {
-            if let Some(decisions) = headers.get("x-sentinel-agent-decisions") {
+            if let Some(decisions) = headers.get("x-zentinel-agent-decisions") {
                 // Parse JSON array of decisions
                 if let Ok(decisions) = serde_json::from_str::<Vec<AgentDecision>>(decisions) {
                     for decision in decisions {
@@ -584,7 +584,7 @@ impl Agent for AuditLoggerAgent {
 #[async_trait]
 impl AgentHandlerV2 for AuditLoggerAgent {
     fn capabilities(&self) -> AgentCapabilities {
-        AgentCapabilities::new("audit-logger", "Sentinel Audit Logger", env!("CARGO_PKG_VERSION"))
+        AgentCapabilities::new("audit-logger", "Zentinel Audit Logger", env!("CARGO_PKG_VERSION"))
             .with_event(EventType::RequestHeaders)
             .with_event(EventType::ResponseHeaders)
             .with_features(AgentFeatures {

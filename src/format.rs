@@ -373,7 +373,7 @@ mod tests {
 
         let output = formatter.format(&event);
         assert!(output.starts_with("CEF:0|"));
-        assert!(output.contains("Sentinel"));
+        assert!(output.contains("Zentinel"));
         assert!(output.contains("src=192.168.1.1"));
         assert!(output.contains("request=/api/users"));
     }

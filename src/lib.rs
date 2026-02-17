@@ -1,6 +1,6 @@
-//! Sentinel Audit Logger Agent
+//! Zentinel Audit Logger Agent
 //!
-//! A comprehensive audit logging agent for the Sentinel API Gateway.
+//! A comprehensive audit logging agent for the Zentinel API Gateway.
 //! Supports multiple log formats (JSON, CEF, LEEF), PII redaction,
 //! and various output destinations.
 

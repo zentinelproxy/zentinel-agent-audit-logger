@@ -1,19 +1,19 @@
-//! Integration tests for the Sentinel Audit Logger Agent.
+//! Integration tests for the Zentinel Audit Logger Agent.
 //!
 //! These tests verify the complete functionality of the audit logger,
 //! including configuration parsing, event building, formatting,
 //! redaction, and output handling.
 
-use sentinel_agent_audit_logger::{
+use zentinel_agent_audit_logger::{
     AuditEvent, AuditEventBuilder, AuditLoggerAgent, AuditLoggerConfig, Redactor,
     create_formatter,
 };
-use sentinel_agent_audit_logger::config::{
+use zentinel_agent_audit_logger::config::{
     ComplianceTemplate, CustomRedactionPattern, FilterAction,
     FilterCondition, FormatConfig, FormatType, HeaderFieldConfig, OutputConfig,
     RedactionConfig, RedactionPattern,
 };
-use sentinel_agent_audit_logger::event::AgentDecision;
+use zentinel_agent_audit_logger::event::AgentDecision;
 use std::collections::HashMap;
 
 // =============================================================================
@@ -861,7 +861,7 @@ fn test_output_config_file() {
     let yaml = r#"
 outputs:
   - type: file
-    path: /var/log/sentinel/audit.log
+    path: /var/log/zentinel/audit.log
     max_size: 104857600
     max_files: 10
 "#;
@@ -869,7 +869,7 @@ outputs:
     let config: AuditLoggerConfig = serde_yaml::from_str(yaml).unwrap();
 
     if let OutputConfig::File { path, max_size, max_files } = &config.outputs[0] {
-        assert_eq!(path.to_str().unwrap(), "/var/log/sentinel/audit.log");
+        assert_eq!(path.to_str().unwrap(), "/var/log/zentinel/audit.log");
         assert_eq!(*max_size, Some(104857600));
         assert_eq!(*max_files, Some(10));
     } else {
@@ -891,8 +891,8 @@ outputs:
 
     if let OutputConfig::Syslog { address, protocol, facility } = &config.outputs[0] {
         assert_eq!(address, "syslog.example.com:514");
-        assert!(matches!(protocol, sentinel_agent_audit_logger::config::SyslogProtocol::Udp));
-        assert!(matches!(facility, sentinel_agent_audit_logger::config::SyslogFacility::Local0));
+        assert!(matches!(protocol, zentinel_agent_audit_logger::config::SyslogProtocol::Udp));
+        assert!(matches!(facility, zentinel_agent_audit_logger::config::SyslogFacility::Local0));
     } else {
         panic!("Expected Syslog output config");
     }
