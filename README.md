@@ -189,16 +189,16 @@ redaction:
 
 ```bash
 # With default configuration
-zentinel-agent-audit-logger
+zentinel-audit-logger-agent
 
 # With custom configuration
-zentinel-agent-audit-logger --config /etc/zentinel/audit-logger.yaml
+zentinel-audit-logger-agent --config /etc/zentinel/audit-logger.yaml
 
 # Print default configuration
-zentinel-agent-audit-logger --print-config
+zentinel-audit-logger-agent --print-config
 
 # Validate configuration
-zentinel-agent-audit-logger --validate --config audit-logger.yaml
+zentinel-audit-logger-agent --validate --config audit-logger.yaml
 ```
 
 ## CLI Options

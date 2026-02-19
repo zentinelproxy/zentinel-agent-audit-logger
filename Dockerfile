@@ -10,7 +10,7 @@
 ################################################################################
 FROM gcr.io/distroless/cc-debian12:nonroot AS prebuilt
 
-COPY zentinel-agent-audit-logger /zentinel-agent-audit-logger
+COPY zentinel-audit-logger-agent /zentinel-audit-logger-agent
 
 LABEL org.opencontainers.image.title="Zentinel Audit Logger Agent" \
       org.opencontainers.image.description="Zentinel Audit Logger Agent for Zentinel reverse proxy" \
@@ -22,4 +22,4 @@ ENV RUST_LOG=info,zentinel_agent_audit_logger=debug \
 
 USER nonroot:nonroot
 
-ENTRYPOINT ["/zentinel-agent-audit-logger"]
+ENTRYPOINT ["/zentinel-audit-logger-agent"]
