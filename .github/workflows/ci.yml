@@ -50,6 +50,8 @@ jobs:
           path: target
           key: ${{ runner.os }}-cargo-clippy-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-clippy-
+      - name: Install protoc
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
       - run: cargo clippy --workspace --all-targets -- -D warnings
 
   test:
@@ -76,6 +78,8 @@ jobs:
           path: target
           key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-test-
+      - name: Install protoc
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
       - run: cargo test --workspace
 
   test-all-features:
@@ -102,6 +106,6 @@ jobs:
           path: target
           key: ${{ runner.os }}-cargo-test-full-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-test-full-
-      - name: Install rdkafka deps
-        run: sudo apt-get update && sudo apt-get install -y cmake librdkafka-dev
+      - name: Install system deps
+        run: sudo apt-get update && sudo apt-get install -y cmake librdkafka-dev protobuf-compiler
       - run: cargo test --workspace --all-features
