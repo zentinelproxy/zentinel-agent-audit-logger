@@ -4,12 +4,12 @@
 //! Supports Protocol v2 with gRPC and UDS transports.
 
 use clap::Parser;
-use zentinel_agent_audit_logger::{AuditLoggerAgent, AuditLoggerConfig};
-use zentinel_agent_sdk::v2::AgentRunnerV2;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use tracing::{error, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use zentinel_agent_audit_logger::{AuditLoggerAgent, AuditLoggerConfig};
+use zentinel_agent_sdk::v2::AgentRunnerV2;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -52,7 +52,9 @@ async fn main() -> anyhow::Result<()> {
     let log_level = args.log_level.parse().unwrap_or(tracing::Level::INFO);
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::layer())
-        .with(tracing_subscriber::filter::LevelFilter::from_level(log_level))
+        .with(tracing_subscriber::filter::LevelFilter::from_level(
+            log_level,
+        ))
         .init();
 
     // Print default config if requested
@@ -104,8 +106,7 @@ async fn main() -> anyhow::Result<()> {
     );
 
     // Configure transport based on CLI options
-    let runner = AgentRunnerV2::new(agent)
-        .with_name("audit-logger");
+    let runner = AgentRunnerV2::new(agent).with_name("audit-logger");
 
     // Start with appropriate transport configuration
     match args.grpc_address {
@@ -116,10 +117,7 @@ async fn main() -> anyhow::Result<()> {
                 uds_socket = %args.socket.display(),
                 "Running with gRPC and UDS transports"
             );
-            runner
-                .with_both(grpc_addr, args.socket)
-                .run()
-                .await?;
+            runner.with_both(grpc_addr, args.socket).run().await?;
         }
         None => {
             // UDS only (default)
@@ -127,10 +125,7 @@ async fn main() -> anyhow::Result<()> {
                 uds_socket = %args.socket.display(),
                 "Running with UDS transport only"
             );
-            runner
-                .with_uds(args.socket)
-                .run()
-                .await?;
+            runner.with_uds(args.socket).run().await?;
         }
     }
 

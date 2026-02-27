@@ -4,17 +4,15 @@
 //! including configuration parsing, event building, formatting,
 //! redaction, and output handling.
 
-use zentinel_agent_audit_logger::{
-    AuditEvent, AuditEventBuilder, AuditLoggerAgent, AuditLoggerConfig, Redactor,
-    create_formatter,
-};
+use std::collections::HashMap;
 use zentinel_agent_audit_logger::config::{
-    ComplianceTemplate, CustomRedactionPattern, FilterAction,
-    FilterCondition, FormatConfig, FormatType, HeaderFieldConfig, OutputConfig,
-    RedactionConfig, RedactionPattern,
+    ComplianceTemplate, CustomRedactionPattern, FilterAction, FilterCondition, FormatConfig,
+    FormatType, HeaderFieldConfig, OutputConfig, RedactionConfig, RedactionPattern,
 };
 use zentinel_agent_audit_logger::event::AgentDecision;
-use std::collections::HashMap;
+use zentinel_agent_audit_logger::{
+    create_formatter, AuditEvent, AuditEventBuilder, AuditLoggerAgent, AuditLoggerConfig, Redactor,
+};
 
 // =============================================================================
 // Configuration Tests
@@ -168,7 +166,10 @@ fn test_soc2_compliance_template() {
     assert!(config.fields.agent_decisions);
     assert!(config.redaction.enabled);
     assert!(config.redaction.patterns.contains(&RedactionPattern::Email));
-    assert!(config.redaction.patterns.contains(&RedactionPattern::CreditCard));
+    assert!(config
+        .redaction
+        .patterns
+        .contains(&RedactionPattern::CreditCard));
 }
 
 #[test]
@@ -192,7 +193,10 @@ fn test_pci_compliance_template() {
     ComplianceTemplate::Pci.apply(&mut config);
 
     // PCI should redact credit card data
-    assert!(config.redaction.patterns.contains(&RedactionPattern::CreditCard));
+    assert!(config
+        .redaction
+        .patterns
+        .contains(&RedactionPattern::CreditCard));
     // Don't log bodies that might contain card data
     assert!(!config.body.log_request_body);
     assert!(!config.body.log_response_body);
@@ -207,7 +211,10 @@ fn test_gdpr_compliance_template() {
     assert!(!config.fields.client_ip); // IP is personal data under GDPR
     assert!(!config.fields.user_id);
     // Should redact IP addresses
-    assert!(config.redaction.patterns.contains(&RedactionPattern::IpAddress));
+    assert!(config
+        .redaction
+        .patterns
+        .contains(&RedactionPattern::IpAddress));
     // Hash for pseudonymization
     assert!(config.redaction.hash_original);
 }
@@ -438,8 +445,12 @@ fn test_cef_severity_mapping() {
         let output = formatter.format(&event);
         // CEF format: ...vendor|product|version|sigId|name|severity|...
         // The severity is the 7th field
-        assert!(output.contains(&format!("|{}|", expected_severity)),
-            "Status {} should map to severity {}", status, expected_severity);
+        assert!(
+            output.contains(&format!("|{}|", expected_severity)),
+            "Status {} should map to severity {}",
+            status,
+            expected_severity
+        );
     }
 }
 
@@ -481,7 +492,10 @@ fn test_redact_email_addresses() {
     let test_cases = [
         ("Contact: john@example.com", "Contact: [REDACTED]"),
         ("Email: test.user+tag@company.co.uk", "Email: [REDACTED]"),
-        ("Multiple: a@b.com and c@d.org", "Multiple: [REDACTED] and [REDACTED]"),
+        (
+            "Multiple: a@b.com and c@d.org",
+            "Multiple: [REDACTED] and [REDACTED]",
+        ),
     ];
 
     for (input, expected) in test_cases {
@@ -502,7 +516,11 @@ fn test_redact_credit_cards() {
 
     for input in inputs {
         let result = redactor.redact_string(input);
-        assert!(result.contains("[REDACTED]"), "Card not redacted in: {}", input);
+        assert!(
+            result.contains("[REDACTED]"),
+            "Card not redacted in: {}",
+            input
+        );
         assert!(!result.contains("4111"), "Card digits remain in: {}", input);
     }
 }
@@ -529,7 +547,11 @@ fn test_redact_phone_numbers() {
 
     for input in inputs {
         let result = redactor.redact_string(input);
-        assert!(result.contains("[REDACTED]"), "Phone not redacted in: {}", input);
+        assert!(
+            result.contains("[REDACTED]"),
+            "Phone not redacted in: {}",
+            input
+        );
     }
 }
 
@@ -550,7 +572,10 @@ fn test_redact_headers() {
     let redactor = create_test_redactor();
 
     let mut headers = HashMap::new();
-    headers.insert("Authorization".to_string(), "Bearer secret-token-12345".to_string());
+    headers.insert(
+        "Authorization".to_string(),
+        "Bearer secret-token-12345".to_string(),
+    );
     headers.insert("Cookie".to_string(), "session=abc123".to_string());
     headers.insert("X-API-Key".to_string(), "api-key-secret".to_string());
     headers.insert("Content-Type".to_string(), "application/json".to_string());
@@ -559,12 +584,18 @@ fn test_redact_headers() {
     let redacted = redactor.redact_headers(&headers);
 
     // Sensitive headers should be fully redacted
-    assert_eq!(redacted.get("Authorization"), Some(&"[REDACTED]".to_string()));
+    assert_eq!(
+        redacted.get("Authorization"),
+        Some(&"[REDACTED]".to_string())
+    );
     assert_eq!(redacted.get("Cookie"), Some(&"[REDACTED]".to_string()));
     assert_eq!(redacted.get("X-API-Key"), Some(&"[REDACTED]".to_string()));
 
     // Non-sensitive headers should pass through
-    assert_eq!(redacted.get("Content-Type"), Some(&"application/json".to_string()));
+    assert_eq!(
+        redacted.get("Content-Type"),
+        Some(&"application/json".to_string())
+    );
     assert_eq!(redacted.get("User-Agent"), Some(&"test-client".to_string()));
 }
 
@@ -800,7 +831,10 @@ fields:
 "#;
 
     let config: AuditLoggerConfig = serde_yaml::from_str(yaml).unwrap();
-    assert!(matches!(config.fields.request_headers, HeaderFieldConfig::All));
+    assert!(matches!(
+        config.fields.request_headers,
+        HeaderFieldConfig::All
+    ));
 }
 
 #[test]
@@ -811,7 +845,10 @@ fields:
 "#;
 
     let config: AuditLoggerConfig = serde_yaml::from_str(yaml).unwrap();
-    assert!(matches!(config.fields.response_headers, HeaderFieldConfig::None));
+    assert!(matches!(
+        config.fields.response_headers,
+        HeaderFieldConfig::None
+    ));
 }
 
 // =============================================================================
@@ -868,7 +905,12 @@ outputs:
 
     let config: AuditLoggerConfig = serde_yaml::from_str(yaml).unwrap();
 
-    if let OutputConfig::File { path, max_size, max_files } = &config.outputs[0] {
+    if let OutputConfig::File {
+        path,
+        max_size,
+        max_files,
+    } = &config.outputs[0]
+    {
         assert_eq!(path.to_str().unwrap(), "/var/log/zentinel/audit.log");
         assert_eq!(*max_size, Some(104857600));
         assert_eq!(*max_files, Some(10));
@@ -889,10 +931,21 @@ outputs:
 
     let config: AuditLoggerConfig = serde_yaml::from_str(yaml).unwrap();
 
-    if let OutputConfig::Syslog { address, protocol, facility } = &config.outputs[0] {
+    if let OutputConfig::Syslog {
+        address,
+        protocol,
+        facility,
+    } = &config.outputs[0]
+    {
         assert_eq!(address, "syslog.example.com:514");
-        assert!(matches!(protocol, zentinel_agent_audit_logger::config::SyslogProtocol::Udp));
-        assert!(matches!(facility, zentinel_agent_audit_logger::config::SyslogFacility::Local0));
+        assert!(matches!(
+            protocol,
+            zentinel_agent_audit_logger::config::SyslogProtocol::Udp
+        ));
+        assert!(matches!(
+            facility,
+            zentinel_agent_audit_logger::config::SyslogFacility::Local0
+        ));
     } else {
         panic!("Expected Syslog output config");
     }

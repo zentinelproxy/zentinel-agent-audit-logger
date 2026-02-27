@@ -57,7 +57,11 @@ impl Redactor {
             patterns,
             replacement: config.replacement.clone(),
             hash_original: config.hash_original,
-            redact_headers: config.redact_headers.iter().map(|s| s.to_lowercase()).collect(),
+            redact_headers: config
+                .redact_headers
+                .iter()
+                .map(|s| s.to_lowercase())
+                .collect(),
             redact_fields: config.redact_fields.clone(),
         }
     }
@@ -85,20 +89,19 @@ impl Redactor {
             if pattern.regex.is_match(&result) {
                 let replacement = if self.hash_original {
                     // Hash the matched value for correlation
-                    pattern.regex.replace_all(&result, |caps: &regex::Captures| {
-                        let matched = caps.get(0).map_or("", |m| m.as_str());
-                        let hash = self.hash_value(matched);
-                        format!(
-                            "[REDACTED:{}:{}]",
-                            pattern.name,
-                            &hash[..8] // First 8 chars of hash
-                        )
-                    })
+                    pattern
+                        .regex
+                        .replace_all(&result, |caps: &regex::Captures| {
+                            let matched = caps.get(0).map_or("", |m| m.as_str());
+                            let hash = self.hash_value(matched);
+                            format!(
+                                "[REDACTED:{}:{}]",
+                                pattern.name,
+                                &hash[..8] // First 8 chars of hash
+                            )
+                        })
                 } else {
-                    let repl = pattern
-                        .replacement
-                        .as_deref()
-                        .unwrap_or(&self.replacement);
+                    let repl = pattern.replacement.as_deref().unwrap_or(&self.replacement);
                     pattern.regex.replace_all(&result, repl)
                 };
 
@@ -274,11 +277,17 @@ mod tests {
     fn test_redact_headers() {
         let redactor = Redactor::new(&test_config());
         let mut headers = HashMap::new();
-        headers.insert("Authorization".to_string(), "Bearer secret-token".to_string());
+        headers.insert(
+            "Authorization".to_string(),
+            "Bearer secret-token".to_string(),
+        );
         headers.insert("Content-Type".to_string(), "application/json".to_string());
 
         let redacted = redactor.redact_headers(&headers);
-        assert_eq!(redacted.get("Authorization"), Some(&"[REDACTED]".to_string()));
+        assert_eq!(
+            redacted.get("Authorization"),
+            Some(&"[REDACTED]".to_string())
+        );
         assert_eq!(
             redacted.get("Content-Type"),
             Some(&"application/json".to_string())

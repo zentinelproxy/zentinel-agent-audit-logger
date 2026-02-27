@@ -1,8 +1,6 @@
 //! Main audit logger agent implementation.
 
-use crate::config::{
-    AuditLoggerConfig, FilterAction, FilterCondition, HeaderFieldConfig,
-};
+use crate::config::{AuditLoggerConfig, FilterAction, FilterCondition, HeaderFieldConfig};
 use crate::event::{AgentDecision, AuditEvent, AuditEventBuilder};
 use crate::format::{create_formatter, Formatter};
 use crate::output::{create_outputs, MultiOutput, Output};
@@ -10,18 +8,18 @@ use crate::redaction::{truncate_body, Redactor};
 use async_trait::async_trait;
 use rand::Rng;
 use regex::Regex;
-use zentinel_agent_sdk::{Agent, Decision, Request, Response};
-use zentinel_agent_protocol::{AgentResponse, EventType, RequestHeadersEvent, ResponseHeadersEvent};
-use zentinel_agent_protocol::v2::{
-    AgentCapabilities, AgentFeatures, AgentHandlerV2, CounterMetric, DrainReason,
-    GaugeMetric, HealthStatus, MetricsReport, ShutdownReason,
-};
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, AtomicBool, Ordering};
 use std::time::Instant;
 use tokio::sync::Mutex;
 use tracing::{debug, error, info, warn};
+use zentinel_agent_protocol::v2::{
+    AgentCapabilities, AgentFeatures, AgentHandlerV2, CounterMetric, DrainReason, HealthStatus,
+    MetricsReport, ShutdownReason,
+};
+use zentinel_agent_protocol::EventType;
+use zentinel_agent_sdk::{Agent, Decision, Request, Response};
 
 /// Audit Logger Agent
 ///
@@ -119,7 +117,10 @@ impl AuditLoggerAgent {
                         Regex::new(pattern).ok().map(CompiledCondition::PathRegex)
                     }
                     FilterCondition::StatusCode { min, max } => {
-                        Some(CompiledCondition::StatusCode { min: *min, max: *max })
+                        Some(CompiledCondition::StatusCode {
+                            min: *min,
+                            max: *max,
+                        })
                     }
                     FilterCondition::Header { name, value } => Some(CompiledCondition::Header {
                         name: name.clone(),
@@ -265,7 +266,12 @@ impl AuditLoggerAgent {
 
         // Check content type
         let ct = content_type.unwrap_or("");
-        let allowed = self.config.body.content_types.iter().any(|t| ct.contains(t));
+        let allowed = self
+            .config
+            .body
+            .content_types
+            .iter()
+            .any(|t| ct.contains(t));
         if !allowed {
             return None;
         }
@@ -584,30 +590,30 @@ impl Agent for AuditLoggerAgent {
 #[async_trait]
 impl AgentHandlerV2 for AuditLoggerAgent {
     fn capabilities(&self) -> AgentCapabilities {
-        AgentCapabilities::new("audit-logger", "Zentinel Audit Logger", env!("CARGO_PKG_VERSION"))
-            .with_event(EventType::RequestHeaders)
-            .with_event(EventType::ResponseHeaders)
-            .with_features(AgentFeatures {
-                streaming_body: false,       // Audit logger doesn't need body streaming
-                websocket: false,            // No WebSocket support
-                guardrails: false,           // No guardrails
-                config_push: true,           // Supports runtime config updates
-                health_reporting: true,      // Reports health status
-                metrics_export: true,        // Exports metrics
-                concurrent_requests: 1000,   // Can handle many concurrent requests
-                cancellation: true,          // Supports request cancellation
-                flow_control: false,         // Doesn't need flow control (always allows)
-            })
+        AgentCapabilities::new(
+            "audit-logger",
+            "Zentinel Audit Logger",
+            env!("CARGO_PKG_VERSION"),
+        )
+        .with_event(EventType::RequestHeaders)
+        .with_event(EventType::ResponseHeaders)
+        .with_features(AgentFeatures {
+            streaming_body: false,     // Audit logger doesn't need body streaming
+            websocket: false,          // No WebSocket support
+            guardrails: false,         // No guardrails
+            config_push: true,         // Supports runtime config updates
+            health_reporting: true,    // Reports health status
+            metrics_export: true,      // Exports metrics
+            concurrent_requests: 1000, // Can handle many concurrent requests
+            cancellation: true,        // Supports request cancellation
+            flow_control: false,       // Doesn't need flow control (always allows)
+        })
     }
 
     fn health_status(&self) -> HealthStatus {
         // Check if we're draining
         if self.draining.load(Ordering::Relaxed) {
-            return HealthStatus::degraded(
-                "audit-logger",
-                vec!["new_requests".to_string()],
-                1.0,
-            );
+            return HealthStatus::degraded("audit-logger", vec!["new_requests".to_string()], 1.0);
         }
 
         // Check if there are output errors accumulating
@@ -663,8 +669,7 @@ impl AgentHandlerV2 for AuditLoggerAgent {
     async fn on_shutdown(&self, reason: ShutdownReason, grace_period_ms: u64) {
         info!(
             ?reason,
-            grace_period_ms,
-            "Received shutdown request, flushing outputs"
+            grace_period_ms, "Received shutdown request, flushing outputs"
         );
 
         // Mark as draining to report degraded health
@@ -675,11 +680,7 @@ impl AgentHandlerV2 for AuditLoggerAgent {
     }
 
     async fn on_drain(&self, duration_ms: u64, reason: DrainReason) {
-        warn!(
-            ?reason,
-            duration_ms,
-            "Received drain request"
-        );
+        warn!(?reason, duration_ms, "Received drain request");
 
         // Mark as draining
         self.draining.store(true, Ordering::Relaxed);
@@ -708,10 +709,16 @@ mod tests {
     fn test_multi_headers() -> HashMap<String, Vec<String>> {
         let mut headers = HashMap::new();
         headers.insert("host".to_string(), vec!["api.example.com".to_string()]);
-        headers.insert("user-agent".to_string(), vec!["test-client/1.0".to_string()]);
+        headers.insert(
+            "user-agent".to_string(),
+            vec!["test-client/1.0".to_string()],
+        );
         headers.insert("x-correlation-id".to_string(), vec!["test-123".to_string()]);
         headers.insert("x-user-id".to_string(), vec!["user-456".to_string()]);
-        headers.insert("content-type".to_string(), vec!["application/json".to_string()]);
+        headers.insert(
+            "content-type".to_string(),
+            vec!["application/json".to_string()],
+        );
         headers
     }
 

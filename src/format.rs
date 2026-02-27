@@ -99,11 +99,11 @@ impl CefFormatter {
     /// Map HTTP status code to CEF severity (0-10).
     fn status_to_severity(status: Option<u16>) -> u8 {
         match status {
-            Some(s) if s >= 500 => 7,  // Server error
-            Some(s) if s >= 400 => 5,  // Client error
-            Some(s) if s >= 300 => 3,  // Redirect
-            Some(s) if s >= 200 => 1,  // Success
-            _ => 0,                     // Unknown
+            Some(s) if s >= 500 => 7, // Server error
+            Some(s) if s >= 400 => 5, // Client error
+            Some(s) if s >= 300 => 3, // Redirect
+            Some(s) if s >= 200 => 1, // Success
+            _ => 0,                   // Unknown
         }
     }
 
@@ -182,7 +182,10 @@ impl Formatter for CefFormatter {
         }
 
         if let Some(ref ua) = event.user_agent {
-            extensions.push(format!("requestClientApplication={}", Self::escape_extension(ua)));
+            extensions.push(format!(
+                "requestClientApplication={}",
+                Self::escape_extension(ua)
+            ));
         }
 
         format!("{}{}", header, extensions.join(" "))
@@ -254,7 +257,10 @@ impl Formatter for LeefFormatter {
         }
 
         if let Some(ref id) = event.correlation_id {
-            attrs.push(format!("devTimeFormat={}", Self::escape(&self.timestamp_format)));
+            attrs.push(format!(
+                "devTimeFormat={}",
+                Self::escape(&self.timestamp_format)
+            ));
             attrs.push(format!("externalId={}", Self::escape(id)));
         }
 

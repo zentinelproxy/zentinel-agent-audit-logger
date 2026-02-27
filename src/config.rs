@@ -398,7 +398,9 @@ impl RedactionPattern {
             Self::CreditCard => r"\b(?:\d[ -]*?){13,16}\b",
             Self::Ssn => r"\b\d{3}-\d{2}-\d{4}\b",
             Self::Phone => r"\b(?:\+?1[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}\b",
-            Self::IpAddress => r"\b(?:\d{1,3}\.){3}\d{1,3}\b|(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}",
+            Self::IpAddress => {
+                r"\b(?:\d{1,3}\.){3}\d{1,3}\b|(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}"
+            }
             Self::Jwt => r"\beyJ[a-zA-Z0-9_-]*\.eyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*\b",
             Self::AwsKey => r"\b(?:AKIA|ABIA|ACCA|ASIA)[A-Z0-9]{16}\b",
             Self::ApiKey => r"\b[a-zA-Z0-9]{32,}\b",
@@ -550,10 +552,7 @@ impl ComplianceTemplate {
 
         // Redact card data
         config.redaction.enabled = true;
-        config.redaction.patterns = vec![
-            RedactionPattern::CreditCard,
-            RedactionPattern::ApiKey,
-        ];
+        config.redaction.patterns = vec![RedactionPattern::CreditCard, RedactionPattern::ApiKey];
 
         // Don't log bodies that might contain card data
         config.body.log_request_body = false;

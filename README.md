@@ -16,11 +16,30 @@ A comprehensive audit logging agent for the Zentinel API Gateway. Provides struc
 
 ## Installation
 
-Add to your `Cargo.toml`:
+### Using Bundle (Recommended)
 
-```toml
-[dependencies]
-zentinel-agent-audit-logger = { git = "https://github.com/zentinelproxy/zentinel-agent-audit-logger" }
+```bash
+# Install just this agent
+zentinel bundle install audit-logger
+
+# Or install all bundled agents
+zentinel bundle install
+```
+
+The bundle command downloads the correct binary for your platform and places it in the standard location. See the [bundle documentation](https://zentinelproxy.io/docs/deployment/bundle/) for details.
+
+### Using Cargo
+
+```bash
+cargo install zentinel-agent-audit-logger
+```
+
+### From Source
+
+```bash
+git clone https://github.com/zentinelproxy/zentinel-agent-audit-logger
+cd zentinel-agent-audit-logger
+cargo build --release
 ```
 
 ## Quick Start
