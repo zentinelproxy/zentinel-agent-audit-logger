@@ -3,14 +3,14 @@
 use crate::config::{OutputConfig, SyslogFacility, SyslogProtocol};
 use async_trait::async_trait;
 use std::io::Write;
-#[cfg(feature = "kafka-output")]
-use tracing::warn;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs::{File, OpenOptions};
 use tokio::io::AsyncWriteExt;
 use tokio::net::{TcpStream, UdpSocket};
 use tokio::sync::Mutex;
+#[cfg(feature = "kafka-output")]
+use tracing::warn;
 use tracing::{debug, error};
 
 /// Error type for output operations.
