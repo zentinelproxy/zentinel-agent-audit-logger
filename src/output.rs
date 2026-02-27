@@ -3,6 +3,8 @@
 use crate::config::{OutputConfig, SyslogFacility, SyslogProtocol};
 use async_trait::async_trait;
 use std::io::Write;
+#[cfg(feature = "kafka-output")]
+use tracing::warn;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs::{File, OpenOptions};
