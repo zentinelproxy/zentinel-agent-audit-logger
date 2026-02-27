@@ -107,5 +107,5 @@ jobs:
           key: ${{ runner.os }}-cargo-test-full-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-test-full-
       - name: Install system deps
-        run: sudo apt-get update && sudo apt-get install -y cmake librdkafka-dev protobuf-compiler
+        run: sudo apt-get update && sudo apt-get install -y cmake librdkafka-dev libcurl4-openssl-dev protobuf-compiler
       - run: cargo test --workspace --all-features
