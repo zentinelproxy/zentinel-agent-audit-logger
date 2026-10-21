@@ -1,264 +1,244 @@
-# Zentinel Audit Logger Agent
+<p align="center">
+  <a href="https://zentinelproxy.io">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/zentinelproxy/design/main/marks/lockup/zentinel-lockup-dark.svg">
+      <img alt="Zentinel" src="https://raw.githubusercontent.com/zentinelproxy/design/main/marks/lockup/zentinel-lockup-light.svg" height="52">
+    </picture>
+  </a>
+</p>
 
-A comprehensive audit logging agent for the Zentinel API Gateway. Provides structured, compliance-focused logging with PII redaction, multiple output formats (JSON, CEF, LEEF), and various output destinations.
+<h3 align="center">Audit logger agent</h3>
 
-## Features
+<p align="center">Writes one structured audit record per request, in JSON, CEF or LEEF, with PII redacted, from the request and response headers Zentinel sends it.</p>
 
-- **Multiple Log Formats**: JSON, CEF (ArcSight), LEEF (IBM QRadar)
-- **PII Redaction**: Automatic detection and masking of sensitive data
-  - Email addresses, credit cards, SSNs, phone numbers
-  - JWT tokens, API keys, AWS access keys
-  - Custom regex patterns
-- **Compliance Templates**: Pre-configured for SOC2, HIPAA, PCI DSS, GDPR
-- **Flexible Output**: Stdout, file (with rotation), syslog (UDP/TCP), HTTP webhooks
-- **Conditional Logging**: Filter by path, method, status code, or headers
-- **Request Sampling**: Configurable sample rate for high-traffic environments
+<p align="center">
+  <a href="https://github.com/zentinelproxy/zentinel-agent-audit-logger/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/zentinelproxy/zentinel-agent-audit-logger/actions/workflows/ci.yml/badge.svg"></a>
+  <img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-9b4d8a?style=flat&amp;labelColor=1f161e">
+  <img alt="Agent protocol v2" src="https://img.shields.io/badge/agent%20protocol-v2-f68d31?style=flat&amp;labelColor=1f161e">
+</p>
 
-## Installation
+<p align="center">
+  <a href="https://registry.zentinelproxy.io/audit-logger/">Registry</a> &middot;
+  <a href="https://docs.zentinelproxy.io">Docs</a> &middot;
+  <a href="https://github.com/zentinelproxy">All repositories</a>
+</p>
 
-### Using Bundle (Recommended)
+For teams that need an access trail a SIEM can ingest: the agent builds an audit
+event when the response headers arrive, redacts sensitive values (named headers
+and regex patterns such as emails, card numbers, SSNs, JWTs), and writes it to
+stdout, stderr, a rotating file, syslog or an HTTP webhook. It never blocks or
+changes a request; every decision it returns is "allow". Because of that, run it
+with `failure-mode "open"`, so an unavailable logger does not take traffic down.
+
+## Quick start
 
 ```bash
-# Install just this agent
 zentinel bundle install audit-logger
-
-# Or install all bundled agents
-zentinel bundle install
+zentinel-audit-logger-agent --socket /tmp/zentinel-audit-logger.sock
 ```
 
-The bundle command downloads the correct binary for your platform and places it in the standard location. See the [bundle documentation](https://docs.zentinelproxy.io/deployment/bundle/) for details.
-
-### Using Cargo
-
-Not supported. `zentinel-agent-audit-logger` is not published on crates.io, and it depends on
-`zentinel-agent-protocol` through a path dependency, so neither
-`cargo install zentinel-agent-audit-logger` nor `cargo install --git` works. Use a prebuilt
-binary or build from source (below).
-
-### Prebuilt Binaries
-
-Each [release](https://github.com/zentinelproxy/zentinel-agent-audit-logger/releases) ships binaries
-for `linux-x86_64`, `linux-aarch64`, and `darwin-aarch64`:
-
-```bash
-VERSION=0.4.0
-PLATFORM=linux-x86_64   # or linux-aarch64, darwin-aarch64
-curl -fsSL -o zentinel-audit-logger-agent.tar.gz \
-  "https://github.com/zentinelproxy/zentinel-agent-audit-logger/releases/download/v${VERSION}/zentinel-audit-logger-agent-${VERSION}-${PLATFORM}.tar.gz"
-tar -xzf zentinel-audit-logger-agent.tar.gz
-sudo install -m 0755 zentinel-audit-logger-agent /usr/local/bin/
-```
-
-### From Source
-
-Building from source requires the [zentinel](https://github.com/zentinelproxy/zentinel) repository checked out
-**next to** this one, because `zentinel-agent-protocol` is a path dependency:
-
-```bash
-git clone https://github.com/zentinelproxy/zentinel
-git clone https://github.com/zentinelproxy/zentinel-agent-audit-logger
-cd zentinel-agent-audit-logger
-cargo build --release
-```
-
-## Quick Start
-
-```rust
-use zentinel_agent_audit_logger::{AuditLoggerAgent, AuditLoggerConfig};
-use zentinel_agent_sdk::AgentRunner;
-
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let config = AuditLoggerConfig::default();
-    let agent = AuditLoggerAgent::new(config).await;
-
-    AgentRunner::new(agent)
-        .with_name("audit-logger")
-        .run()
-        .await?;
-
-    Ok(())
-}
-```
-
-## Configuration
-
-Create an `audit-logger.yaml` file:
-
-```yaml
-# Log format settings
-format:
-  format_type: json  # json, cef, or leef
-  pretty: false
-  include_timestamp: true
-  timestamp_format: "%Y-%m-%dT%H:%M:%S%.3fZ"
-
-# Fields to include in logs
-fields:
-  correlation_id: true
-  timestamp: true
-  client_ip: true
-  method: true
-  path: true
-  query_string: true
-  status_code: true
-  duration_ms: true
-  user_id: true
-  user_id_header: "x-user-id"
-  request_headers:
-    include:
-      - content-type
-      - user-agent
-      - x-forwarded-for
-  request_body: false
-  response_body: false
-
-# Output destinations
-outputs:
-  - type: stdout
-  - type: file
-    path: /var/log/zentinel/audit.log
-    max_size: 104857600  # 100MB
-    max_files: 10
-
-# PII redaction
-redaction:
-  enabled: true
-  patterns:
-    - email
-    - credit_card
-    - ssn
-    - phone
-  replacement: "[REDACTED]"
-  hash_original: false
-  redact_headers:
-    - authorization
-    - cookie
-    - x-api-key
-
-# Request/response body logging
-body:
-  log_request_body: false
-  log_response_body: false
-  max_body_size: 4096
-  content_types:
-    - application/json
-    - text/plain
-
-# Compliance template (overrides other settings)
-# compliance_template: hipaa
-
-# Sampling rate (1.0 = log everything, 0.1 = 10%)
-sample_rate: 1.0
-
-# Conditional logging filters
-filters:
-  - name: exclude-health
-    condition:
-      type: path_prefix
-      prefix: /health
-    action: exclude
-  - name: verbose-errors
-    condition:
-      type: status_code
-      min: 500
-      max: 599
-    action: verbose
-```
-
-### Compliance Templates
-
-Use pre-configured settings for common compliance standards:
-
-```yaml
-compliance_template: hipaa  # or soc2, pci, gdpr
-```
-
-- **SOC2**: Focus on access control and change management
-- **HIPAA**: Strict PHI protection with hashed identifiers
-- **PCI**: Card data protection, no body logging
-- **GDPR**: Minimal personal data, IP addresses anonymized
-
-## Log Formats
-
-### JSON (default)
-
-```json
-{
-  "@timestamp": "2024-01-15T10:30:45.123Z",
-  "correlation_id": "req-abc123",
-  "client_ip": "192.168.1.1",
-  "method": "POST",
-  "path": "/api/users",
-  "status_code": 201,
-  "duration_ms": 45,
-  "user_id": "user-456"
-}
-```
-
-### CEF (Common Event Format)
-
-```
-CEF:0|Zentinel|AuditLogger|1.0|POST-201|POST /api/users|1|rt=2024-01-15T10:30:45.123Z src=192.168.1.1 request=/api/users outcome=201
-```
-
-### LEEF (Log Event Extended Format)
-
-```
-LEEF:2.0|Zentinel|AuditLogger|1.0|POST:201|devTime=2024-01-15T10:30:45.123Z	src=192.168.1.1	url=/api/users	responseCode=201
-```
-
-## Custom Redaction Patterns
-
-Add custom patterns for domain-specific data:
-
-```yaml
-redaction:
-  custom_patterns:
-    - name: account_id
-      pattern: "ACC-\\d{8}"
-      replacement: "[ACCOUNT]"
-    - name: internal_id
-      pattern: "INT-[A-Z0-9]{12}"
-      replacement: "[INTERNAL_ID]"
-```
-
-## Running
-
-```bash
-# With default configuration
-zentinel-audit-logger-agent
-
-# With custom configuration
-zentinel-audit-logger-agent --config /etc/zentinel/audit-logger.yaml
-
-# Print default configuration
-zentinel-audit-logger-agent --print-config
-
-# Validate configuration
-zentinel-audit-logger-agent --validate --config audit-logger.yaml
-```
-
-## CLI Options
-
-- `-c, --config <PATH>`: Configuration file path (default: `audit-logger.yaml`)
-- `-s, --socket <PATH>`: Unix socket path (default: `/tmp/zentinel-audit-logger.sock`)
-- `-L, --log-level <LEVEL>`: Log level (trace, debug, info, warn, error)
-- `--print-config`: Print default configuration and exit
-- `--validate`: Validate configuration and exit
-
-## Zentinel Integration
-
-Add to your Zentinel configuration:
+Without `--config`, the agent looks for `audit-logger.yaml` in the working
+directory and falls back to the defaults (JSON to stdout, redaction on).
 
 ```kdl
+system {
+    worker-threads 0
+}
+
+listeners {
+    listener "http" {
+        address "0.0.0.0:8080"
+        protocol "http"
+    }
+}
+
+upstreams {
+    upstream "backend" {
+        target "127.0.0.1:3000"
+    }
+}
+
 agents {
-    audit-logger socket="/tmp/zentinel-audit-logger.sock" {
-        // Agent-specific configuration can be added here
+    agent "audit-logger" type="custom" {
+        unix-socket "/tmp/zentinel-audit-logger.sock"
+        events "request_headers" "response_headers"
+        timeout-ms 100
+    }
+}
+
+filters {
+    filter "audit-logger" {
+        type "agent"
+        agent "audit-logger"
+        failure-mode "open"
+    }
+}
+
+routes {
+    route "default" {
+        matches { path-prefix "/" }
+        upstream "backend"
+        filters "audit-logger"
     }
 }
 ```
 
+The agent needs both `request_headers` and `response_headers`: the record is
+written on the response event, from the request cached on the first.
+
+## Install
+
+### Bundle (recommended)
+
+```bash
+zentinel bundle install audit-logger
+```
+
+Downloads the release binary pinned in Zentinel's bundle lock and installs it as `zentinel-audit-logger-agent`.
+
+### Release binaries
+
+Tarballs for `linux-x86_64`, `linux-aarch64` and `darwin-aarch64` are attached to each [release](https://github.com/zentinelproxy/zentinel-agent-audit-logger/releases).
+
+### From source
+
+`cargo install --git` does not work for this crate: it depends on a sibling
+checkout of `zentinel-agent-rust-sdk` by path. Clone both side by side:
+
+```bash
+git clone https://github.com/zentinelproxy/zentinel-agent-rust-sdk
+git clone https://github.com/zentinelproxy/zentinel-agent-audit-logger
+cd zentinel-agent-audit-logger
+cargo build --release   # target/release/zentinel-audit-logger-agent
+```
+
+Building needs `protoc` (CI installs `protobuf-compiler`).
+
+## Configuration
+
+Zentinel 0.6.50 does not forward an `agent { config { ... } }` block to agents;
+configure the agent with the flags and the YAML file below.
+
+| Option | Default | Meaning |
+|---|---|---|
+| `-c`, `--config <PATH>` | `audit-logger.yaml` | YAML configuration file. If it does not exist, the defaults are used. |
+| `-s`, `--socket <PATH>` | `/tmp/zentinel-audit-logger.sock` | Unix socket the agent listens on. |
+| `--grpc-address <ADDR>` | unset | Also serve gRPC on this address (for example `0.0.0.0:50051`), in addition to the socket. |
+| `-L`, `--log-level <LEVEL>` | `info` | `trace`, `debug`, `info`, `warn` or `error`. |
+| `--print-config` | | Print the default configuration as YAML and exit. |
+| `--validate` | | Parse the configuration file, print a summary and exit (fails if the file is missing). |
+
+A minimal configuration file:
+
+```yaml
+format:
+  format_type: json        # json, cef or leef
+outputs:
+  - type: stdout
+  - type: file
+    path: /var/log/zentinel/audit.log
+    max_size: 104857600    # rotate at 100 MiB
+    max_files: 10
+redaction:
+  patterns: [email, credit_card, ssn, phone, jwt]
+  redact_fields: [password, user.ssn]
+filters:
+  - name: skip-health
+    condition: { type: path_prefix, prefix: /health }
+    action: exclude
+```
+
+Every key is optional; run `zentinel-audit-logger-agent --print-config` for the
+full default file.
+
+| Option | Default | Meaning |
+|---|---|---|
+| `format.format_type` | `json` | `json`, `cef` (ArcSight) or `leef` (QRadar). |
+| `format.pretty` | `false` | Pretty-print JSON. |
+| `format.timestamp_format` | `%Y-%m-%dT%H:%M:%S%.3fZ` | strftime format for the timestamp. |
+| `format.device_vendor`, `device_product`, `device_version` | `Zentinel`, `AuditLogger`, crate version | CEF/LEEF header fields. |
+| `fields.*` | most on | Booleans per field: `correlation_id`, `timestamp`, `client_ip`, `method`, `path`, `query_string`, `protocol`, `host`, `status_code`, `duration_ms`, `upstream_duration_ms`, `route_id`, `upstream`, `user_id`, `session_id`, `agent_decisions`, `request_body_size`, `response_body_size` (on); `request_body`, `response_body` (off). |
+| `fields.request_headers` | a list of ten common headers | `none`, `all`, `!include [..]` or `!exclude [..]`. |
+| `fields.response_headers` | `none` | Same forms as `request_headers`. |
+| `fields.user_id_header`, `session_id_header` | `x-user-id`, `x-session-id` | Headers the user and session IDs are read from. |
+| `fields.custom_fields` | `{}` | Map of record field name to request header name. |
+| `outputs` | `[{type: stdout}]` | List of destinations, see below. |
+| `redaction.enabled` | `true` | Turn redaction on or off. |
+| `redaction.patterns` | `email`, `credit_card`, `ssn`, `phone` | Built-in patterns: also `ip_address`, `jwt`, `aws_key`, `api_key`. |
+| `redaction.custom_patterns` | `[]` | Entries of `name`, `pattern` (regex), optional `replacement`. |
+| `redaction.replacement` | `[REDACTED]` | Text that replaces a match. |
+| `redaction.hash_original` | `false` | Replace a match with its SHA-256 hex instead, so values stay correlatable. |
+| `redaction.redact_headers` | `authorization`, `cookie`, `set-cookie`, `x-api-key`, `x-auth-token` | Headers whose value is always replaced. |
+| `redaction.redact_fields` | `[]` | JSON body fields to redact, dot notation (`user.email`). |
+| `body.*` | bodies off, `max_body_size` 4096 | `log_request_body`, `log_response_body`, `max_body_size`, `content_types`, `truncation_indicator`. See the limitation below. |
+| `compliance_template` | unset | `soc2`, `hipaa`, `pci` or `gdpr`: presets applied over the file at startup. |
+| `sample_rate` | `1.0` | Fraction of requests to log, `0.0` to `1.0`. |
+| `filters` | `[]` | Ordered rules of `name`, `condition` and `action`; the first match decides. |
+
+Outputs (`type` selects the variant):
+
+| Option | Default | Meaning |
+|---|---|---|
+| `type: stdout` / `type: stderr` | | One line per record. |
+| `type: file` with `path`, `max_size`, `max_files` | no rotation; `max_files` 5 when rotating | Appends to `path`; with `max_size` (bytes) set, rotates to `path.1` ... `path.N`. |
+| `type: syslog` with `address`, `protocol`, `facility` | all required | `host:port`, `udp` or `tcp`, and a facility such as `local0` or `auth`. Severity is informational. |
+| `type: http` with `url`, `method`, `headers`, `batch_size`, `flush_interval_secs`, `timeout_secs`, `retries` | all required | Webhook (`POST` or `PUT`) with retries and exponential backoff. Records are sent when `batch_size` is reached; `flush_interval_secs` is not used yet. |
+
+Filter conditions: `method` (`values`), `path_prefix` (`prefix`), `path_regex`
+(`pattern`), `status_code` (`min`, `max`), `header` (`name`, optional `value`)
+and `all`. Actions: `include`, `exclude`, `verbose` (currently the same as
+`include`).
+
+Full reference: <https://registry.zentinelproxy.io/audit-logger/>
+
+## How it works
+
+- On `request_headers` the agent notes the start time, keyed by the request's
+  `x-correlation-id` or `x-request-id` header; on `response_headers` it applies
+  sampling and filters, builds the record and writes it to every output. An
+  output that fails is logged and skipped; the others still receive the record.
+- `duration_ms` is only filled when the request carries one of those two
+  headers. Client IP comes from `X-Forwarded-For` or `X-Real-IP`; route,
+  upstream, upstream duration and agent decisions come from the
+  `x-zentinel-route-id`, `x-zentinel-upstream`,
+  `x-zentinel-upstream-duration-ms` and `x-zentinel-agent-decisions` headers
+  when they are present.
+- Pattern redaction applies to header values and logged bodies; the path and
+  query string are logged as received.
+- Body logging (partial): the `body` settings and the `request_body` /
+  `response_body` fields exist, but the record is built from header events
+  only, so no body content reaches the log today.
+- Kafka output (not implemented): the `kafka-output` cargo feature adds a
+  `type: kafka` variant, which falls back to stdout with a warning.
+
+## Development
+
+```bash
+git clone https://github.com/zentinelproxy/zentinel-agent-rust-sdk ../zentinel-agent-rust-sdk
+cargo build
+cargo test --workspace
+cargo clippy --workspace --all-targets -- -D warnings
+cargo fmt --all --check
+```
+
+Stable Rust (CI uses `dtolnay/rust-toolchain@stable`) and `protoc`. The HTTP
+output is the default `http-output` feature; build with
+`--no-default-features` to drop it.
+
+## Related
+
+- [Registry page](https://registry.zentinelproxy.io/audit-logger/)
+- [Agent configuration](https://docs.zentinelproxy.io/configuration/agents/)
+- [Agent protocol v2](https://docs.zentinelproxy.io/agents/v2/)
+- [Zentinel](https://github.com/zentinelproxy/zentinel)
+- [Rust agent SDK](https://github.com/zentinelproxy/zentinel-agent-rust-sdk)
+
 ## License
 
-Apache-2.0
+Apache-2.0 (declared in Cargo.toml; this repository has no LICENSE file yet).
+
+---
+
+<p align="center">
+  <sub>Part of <a href="https://zentinelproxy.io">Zentinel</a>, the security-first reverse proxy. The shisa guards the gate.</sub>
+</p>
