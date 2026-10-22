@@ -13,7 +13,7 @@ use zentinel_agent_sdk::v2::AgentRunnerV2;
 
 #[derive(Parser, Debug)]
 #[command(
-    name = "zentinel-audit-logger",
+    name = "zentinel-audit-logger-agent",
     about = "Audit logging agent for Zentinel API Gateway (v2 protocol)",
     version
 )]
@@ -130,4 +130,20 @@ async fn main() -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::CommandFactory;
+
+    /// The release pipeline and `zentinel bundle install` expect exactly
+    /// `<binary> <version>`.
+    #[test]
+    fn version_is_binary_name_and_package_version() {
+        assert_eq!(
+            Args::command().render_version(),
+            format!("{} {}\n", env!("CARGO_BIN_NAME"), env!("CARGO_PKG_VERSION"))
+        );
+    }
 }

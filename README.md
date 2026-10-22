@@ -96,6 +96,14 @@ zentinel bundle install audit-logger
 
 Downloads the release binary pinned in Zentinel's bundle lock and installs it as `zentinel-audit-logger-agent`.
 
+> [!WARNING]
+> The published `0.4.0` release, which Zentinel 26.10_7's bundle lock pins,
+> was not built from its tag (it reports no version at all): it speaks the
+> removed v1 framing on the Unix socket, so the proxy never completes a
+> handshake and, under `failure-mode "closed"`, refuses every request (`503`),
+> and nothing is audited. Use `0.5.0` or later, the first release built and
+> smoke-tested by the shared release pipeline (below).
+
 ### Release binaries
 
 Tarballs for `linux-x86_64`, `linux-aarch64` and `darwin-aarch64` are attached to each [release](https://github.com/zentinelproxy/zentinel-agent-audit-logger/releases).
@@ -127,6 +135,7 @@ configure the agent with the flags and the YAML file below.
 | `-L`, `--log-level <LEVEL>` | `info` | `trace`, `debug`, `info`, `warn` or `error`. |
 | `--print-config` | | Print the default configuration as YAML and exit. |
 | `--validate` | | Parse the configuration file, print a summary and exit (fails if the file is missing). |
+| `-V`, `--version` | | Print `zentinel-audit-logger-agent <version>` and exit. |
 
 A minimal configuration file:
 
@@ -228,6 +237,37 @@ cargo fmt --all --check
 Stable Rust (CI uses `dtolnay/rust-toolchain@stable`) and `protoc`. The HTTP
 output is the default `http-output` feature; build with
 `--no-default-features` to drop it.
+
+## Releases and smoke test
+
+Releases go through the shared agent pipeline
+([`zentinelproxy/.github`](https://github.com/zentinelproxy/.github/tree/main/agent-smoke)):
+pushing a tag `vX.Y.Z` that matches `Cargo.toml` builds `zentinel-audit-logger-agent` with
+`--locked` for `linux-x86_64`, `linux-aarch64` and `darwin-aarch64`, checks
+that `zentinel-audit-logger-agent --version` prints `zentinel-audit-logger-agent X.Y.Z`, runs
+[`scripts/smoke-test.sh`](scripts/smoke-test.sh) behind the latest Zentinel
+release on every platform, and only then publishes the tarballs
+`zentinel bundle install` downloads. CI runs the same pipeline on
+`linux-x86_64` for every push and pull request.
+
+The smoke test runs the release binary behind a real Zentinel with the agent,
+filter and route all `failure-mode "closed"`, over the Unix socket (the
+transport `zentinel bundle install` uses) and gRPC, subscribed to request and response headers. It checks that the
+agent starts without a config file, that requests (GET with a query string,
+POST) are forwarded, that each one is written to the configured audit file
+with its method, path, query string and status, that the client's
+`Authorization` header does not appear in the file unredacted, and that the
+request is refused once the agent is stopped (so the agent really is on the
+request path).
+
+Run it locally:
+
+```bash
+gh release download 26.10_7 --repo zentinelproxy/zentinel --pattern 'zentinel-26.10_7-darwin-arm64.tar.gz*'
+shasum -a 256 -c zentinel-26.10_7-darwin-arm64.tar.gz.sha256 && tar xzf zentinel-26.10_7-darwin-arm64.tar.gz
+cargo build --release --locked
+AGENT_SMOKE=../.github/agent-smoke/smoke.py scripts/smoke-test.sh target/release/zentinel-audit-logger-agent ./zentinel
+```
 
 ## Related
 
