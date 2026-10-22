@@ -1,5 +1,6 @@
 //! Main audit logger agent implementation.
 
+use crate::client_ip::{default_forwarding_headers, resolve_client_ip, TrustedProxies};
 use crate::config::{AuditLoggerConfig, FilterAction, FilterCondition, HeaderFieldConfig};
 use crate::event::{AgentDecision, AuditEvent, AuditEventBuilder};
 use crate::format::{create_formatter, Formatter};
@@ -9,6 +10,7 @@ use async_trait::async_trait;
 use rand::Rng;
 use regex::Regex;
 use std::collections::HashMap;
+use std::net::IpAddr;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
@@ -32,6 +34,8 @@ pub struct AuditLoggerAgent {
     redactor: Redactor,
     /// Compiled filter patterns
     filter_patterns: Vec<CompiledFilter>,
+    /// Proxies whose forwarding headers are believed for the client IP
+    trusted_proxies: TrustedProxies,
     /// Request start times for duration calculation
     request_times: Arc<Mutex<HashMap<String, Instant>>>,
     /// Metrics: total requests processed
@@ -137,6 +141,12 @@ impl AuditLoggerAgent {
             })
             .collect();
 
+        // An invalid entry believes no forwarding headers rather than some.
+        let trusted_proxies = TrustedProxies::parse(&config.trusted_proxies).unwrap_or_else(|e| {
+            warn!(error = %e, "Ignoring trusted_proxies");
+            TrustedProxies::default()
+        });
+
         info!(
             format = ?config.format.format_type,
             outputs = config.outputs.len(),
@@ -149,6 +159,7 @@ impl AuditLoggerAgent {
             output,
             redactor,
             filter_patterns,
+            trusted_proxies,
             request_times: Arc::new(Mutex::new(HashMap::new())),
             requests_total: AtomicU64::new(0),
             events_logged: AtomicU64::new(0),
@@ -306,6 +317,7 @@ impl AuditLoggerAgent {
         method: &str,
         path: &str,
         query_string: Option<&str>,
+        client_ip: Option<IpAddr>,
         headers: &HashMap<String, String>,
         body: Option<&[u8]>,
         response: Option<(&Response, &HashMap<String, String>)>,
@@ -324,11 +336,8 @@ impl AuditLoggerAgent {
         }
 
         if fields.client_ip {
-            // Try various headers for client IP
-            let ip = headers
-                .get("x-forwarded-for")
-                .and_then(|v| v.split(',').next().map(|s| s.trim().to_string()))
-                .or_else(|| headers.get("x-real-ip").cloned())
+            let ip = client_ip
+                .map(|ip| ip.to_string())
                 .unwrap_or_else(|| "unknown".to_string());
             builder = builder.client_ip(ip);
         }
@@ -556,6 +565,15 @@ impl Agent for AuditLoggerAgent {
             return Decision::allow();
         }
 
+        // Client IP: the connection address Zentinel reports, or behind a
+        // trusted proxy the right-most untrusted forwarding hop.
+        let client_ip = resolve_client_ip(
+            request.client_ip(),
+            headers,
+            &default_forwarding_headers(),
+            &self.trusted_proxies,
+        );
+
         // Flatten headers for internal use
         let flat_headers = flatten_headers(headers);
         let flat_resp_headers = flatten_headers(response.headers());
@@ -565,6 +583,7 @@ impl Agent for AuditLoggerAgent {
             method,
             path,
             query_string,
+            client_ip,
             &flat_headers,
             body,
             Some((response, &flat_resp_headers)),
@@ -771,6 +790,7 @@ mod tests {
             "POST",
             "/api/users",
             Some("page=1"),
+            Some("203.0.113.5".parse().unwrap()),
             &headers,
             Some(body),
             None,
@@ -781,6 +801,96 @@ mod tests {
         assert_eq!(event.path, Some("/api/users".to_string()));
         assert_eq!(event.duration_ms, Some(42));
         assert_eq!(event.correlation_id, Some("test-123".to_string()));
+        assert_eq!(event.client_ip, Some("203.0.113.5".to_string()));
+    }
+
+    fn sdk_request(client_ip: &str, headers: &[(&str, &str)]) -> Request {
+        let mut map: HashMap<String, Vec<String>> = HashMap::new();
+        for (k, v) in headers {
+            map.entry(k.to_string()).or_default().push(v.to_string());
+        }
+        let event = zentinel_agent_protocol::RequestHeadersEvent {
+            metadata: zentinel_agent_protocol::RequestMetadata {
+                correlation_id: "test".to_string(),
+                request_id: "test".to_string(),
+                client_ip: client_ip.to_string(),
+                client_port: 40000,
+                server_name: None,
+                protocol: "HTTP/1.1".to_string(),
+                tls_version: None,
+                tls_cipher: None,
+                route_id: None,
+                upstream_id: None,
+                timestamp: "2026-10-22T00:00:00Z".to_string(),
+                traceparent: None,
+            },
+            method: "GET".to_string(),
+            uri: "/api".to_string(),
+            headers: map,
+        };
+        Request::from_headers_event(&event)
+    }
+
+    /// Run a request/response pair through the agent and return the logged
+    /// client_ip.
+    async fn logged_client_ip(
+        trusted: &[&str],
+        client_ip: &str,
+        headers: &[(&str, &str)],
+    ) -> Option<String> {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("audit.log");
+        let config = AuditLoggerConfig {
+            outputs: vec![crate::config::OutputConfig::File {
+                path: path.clone(),
+                max_size: None,
+                max_files: None,
+            }],
+            trusted_proxies: trusted.iter().map(|t| t.to_string()).collect(),
+            ..Default::default()
+        };
+        let agent = AuditLoggerAgent::new(config).await;
+        let request = sdk_request(client_ip, headers);
+        let response =
+            Response::from_headers_event(&zentinel_agent_protocol::ResponseHeadersEvent {
+                correlation_id: "test".to_string(),
+                status: 200,
+                headers: HashMap::new(),
+            });
+        agent.on_request(&request).await;
+        agent.on_response(&request, &response).await;
+        agent.output.flush().await.unwrap();
+        let line = std::fs::read_to_string(&path).unwrap();
+        let record: serde_json::Value = serde_json::from_str(line.lines().next().unwrap()).unwrap();
+        record["client_ip"].as_str().map(String::from)
+    }
+
+    #[tokio::test]
+    async fn test_client_ip_ignores_spoofed_forwarding_headers() {
+        let ip = logged_client_ip(
+            &[],
+            "203.0.113.5",
+            &[("X-Forwarded-For", "10.9.9.9"), ("X-Real-IP", "10.8.8.8")],
+        )
+        .await;
+        assert_eq!(ip.as_deref(), Some("203.0.113.5"));
+    }
+
+    #[tokio::test]
+    async fn test_client_ip_behind_trusted_proxy() {
+        let ip = logged_client_ip(
+            &["10.0.0.0/8"],
+            "10.0.0.1",
+            &[("X-Forwarded-For", "6.6.6.6, 203.0.113.5, 10.0.0.2")],
+        )
+        .await;
+        assert_eq!(ip.as_deref(), Some("203.0.113.5"));
+    }
+
+    #[tokio::test]
+    async fn test_client_ip_unknown_without_usable_address() {
+        let ip = logged_client_ip(&[], "", &[("X-Forwarded-For", "203.0.113.5")]).await;
+        assert_eq!(ip.as_deref(), Some("unknown"));
     }
 
     #[tokio::test]

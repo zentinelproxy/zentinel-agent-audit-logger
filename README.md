@@ -157,6 +157,7 @@ full default file.
 | `format.pretty` | `false` | Pretty-print JSON. |
 | `format.timestamp_format` | `%Y-%m-%dT%H:%M:%S%.3fZ` | strftime format for the timestamp. |
 | `format.device_vendor`, `device_product`, `device_version` | `Zentinel`, `AuditLogger`, crate version | CEF/LEEF header fields. |
+| `trusted_proxies` | empty | IPs or CIDRs of proxies whose `X-Forwarded-For` / `X-Real-IP` are believed for `client_ip`. Only needed with Zentinel older than 0.6.48; newer versions resolve the client behind the listener's `trusted-proxies` themselves. |
 | `fields.*` | most on | Booleans per field: `correlation_id`, `timestamp`, `client_ip`, `method`, `path`, `query_string`, `protocol`, `host`, `status_code`, `duration_ms`, `upstream_duration_ms`, `route_id`, `upstream`, `user_id`, `session_id`, `agent_decisions`, `request_body_size`, `response_body_size` (on); `request_body`, `response_body` (off). |
 | `fields.request_headers` | a list of ten common headers | `none`, `all`, `!include [..]` or `!exclude [..]`. |
 | `fields.response_headers` | `none` | Same forms as `request_headers`. |
@@ -198,7 +199,10 @@ Full reference: <https://registry.zentinelproxy.io/audit-logger/>
   sampling and filters, builds the record and writes it to every output. An
   output that fails is logged and skipped; the others still receive the record.
 - `duration_ms` is only filled when the request carries one of those two
-  headers. Client IP comes from `X-Forwarded-For` or `X-Real-IP`; route,
+  headers. Client IP is the connection address Zentinel reports
+  (`unknown` if it has none); `X-Forwarded-For` / `X-Real-IP` are only read
+  when that address is in `trusted_proxies`, taking the right-most hop that is
+  not a trusted proxy. Route,
   upstream, upstream duration and agent decisions come from the
   `x-zentinel-route-id`, `x-zentinel-upstream`,
   `x-zentinel-upstream-duration-ms` and `x-zentinel-agent-decisions` headers

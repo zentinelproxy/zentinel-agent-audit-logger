@@ -5,6 +5,7 @@
 //! and various output destinations.
 
 pub mod agent;
+pub mod client_ip;
 pub mod config;
 pub mod event;
 pub mod format;

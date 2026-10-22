@@ -57,6 +57,7 @@ clap = { version = "4", features = ["derive"] }
 
 # UUID for correlation IDs
 uuid = { version = "1", features = ["v4"] }
+ipnet = "2"
 
 [features]
 default = ["http-output"]

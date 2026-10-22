@@ -24,6 +24,9 @@ pub struct AuditLoggerConfig {
     pub sample_rate: f64,
     /// Only log requests matching these conditions
     pub filters: Vec<FilterConfig>,
+    /// Proxies (IPs or CIDRs) whose X-Forwarded-For / X-Real-IP are believed
+    /// for `client_ip`. Otherwise it is the connection address Zentinel reports.
+    pub trusted_proxies: Vec<String>,
 }
 
 impl Default for AuditLoggerConfig {
@@ -37,6 +40,7 @@ impl Default for AuditLoggerConfig {
             compliance_template: None,
             sample_rate: 1.0,
             filters: Vec::new(),
+            trusted_proxies: Vec::new(),
         }
     }
 }
