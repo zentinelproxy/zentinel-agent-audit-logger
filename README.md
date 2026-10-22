@@ -235,7 +235,7 @@ output is the default `http-output` feature; build with
 
 ## License
 
-Apache-2.0 (declared in Cargo.toml; this repository has no LICENSE file yet).
+Apache-2.0, see [`LICENSE`](LICENSE).
 
 ---
 
