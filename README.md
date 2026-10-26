@@ -102,7 +102,8 @@ Downloads the release binary pinned in Zentinel's bundle lock and installs it as
 > removed v1 framing on the Unix socket, so the proxy never completes a
 > handshake and, under `failure-mode "closed"`, refuses every request (`503`),
 > and nothing is audited. Use `0.5.0` or later, the first release built and
-> smoke-tested by the shared release pipeline (below).
+> smoke-tested by the shared release pipeline (below); Zentinel 26.10_8's
+> bundle lock pins `0.5.0`.
 
 ### Release binaries
 
@@ -124,8 +125,10 @@ Building needs `protoc` (CI installs `protobuf-compiler`).
 
 ## Configuration
 
-Zentinel 0.6.50 does not forward an `agent { config { ... } }` block to agents;
-configure the agent with the flags and the YAML file below.
+Zentinel 26.10_8 and later send the agent block's `config { }` on every
+connection (releases up to 0.6.50 never did), but the agent has no handler
+for it: it acknowledges the block and applies nothing. Configure the agent
+with the flags and the YAML file below.
 
 | Option | Default | Meaning |
 |---|---|---|
@@ -263,8 +266,8 @@ request path).
 Run it locally:
 
 ```bash
-gh release download 26.10_7 --repo zentinelproxy/zentinel --pattern 'zentinel-26.10_7-darwin-arm64.tar.gz*'
-shasum -a 256 -c zentinel-26.10_7-darwin-arm64.tar.gz.sha256 && tar xzf zentinel-26.10_7-darwin-arm64.tar.gz
+gh release download 26.10_8 --repo zentinelproxy/zentinel --pattern 'zentinel-26.10_8-darwin-arm64.tar.gz*'
+shasum -a 256 -c zentinel-26.10_8-darwin-arm64.tar.gz.sha256 && tar xzf zentinel-26.10_8-darwin-arm64.tar.gz
 cargo build --release --locked
 AGENT_SMOKE=../.github/agent-smoke/smoke.py scripts/smoke-test.sh target/release/zentinel-audit-logger-agent ./zentinel
 ```
